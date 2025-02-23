@@ -38,7 +38,6 @@ func main() {
 }
 
 func getDolarPrice(w http.ResponseWriter, r *http.Request) {
-	println("Executing how many times?")
 	ctxApi := context.Background()
 	ctxApi, cancel := context.WithTimeout(ctxApi, time.Millisecond*200)
 	defer cancel()
