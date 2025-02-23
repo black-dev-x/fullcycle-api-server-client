@@ -14,9 +14,9 @@ type Response struct {
 	Bid string `json:"bid"`
 }
 type ResponseExternalApi struct {
-	Data DolarPrice `json:"USDBRL"`
+	Data DollarPrice `json:"USDBRL"`
 }
-type DolarPrice struct {
+type DollarPrice struct {
 	gorm.Model
 	Code               string `json:"code"`
 	Codein             string `json:"codein"`
@@ -33,54 +33,59 @@ type DolarPrice struct {
 
 func main() {
 	migrate()
-	http.HandleFunc("GET /", getDolarPrice)
+	http.HandleFunc("GET /", getDollarPrice)
 	http.ListenAndServe(":8080", nil)
 }
 
-func getDolarPrice(w http.ResponseWriter, r *http.Request) {
+func getDollarPrice(w http.ResponseWriter, r *http.Request) {
 	ctxApi := context.Background()
 	ctxApi, cancel := context.WithTimeout(ctxApi, time.Millisecond*200)
 	defer cancel()
 	url := "https://economia.awesomeapi.com.br/json/last/USD-BRL"
-	req, err := http.NewRequestWithContext(ctxApi, "GET", url, nil)
-	if err != nil {
-		json.NewEncoder(w).Encode(retrieveLatestDolarPrice())
-		return
-	}
+	req, _ := http.NewRequestWithContext(ctxApi, "GET", url, nil)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		json.NewEncoder(w).Encode(retrieveLatestDolarPrice())
+		if ctxApi.Err() != nil {
+			println("Timeout error")
+		}
+		json.NewEncoder(w).Encode(retrieveLatestDollarPrice())
 		return
 	}
 	response := ResponseExternalApi{}
 	error := json.NewDecoder(res.Body).Decode(&response)
 	if error != nil {
-		json.NewEncoder(w).Encode(retrieveLatestDolarPrice())
+		json.NewEncoder(w).Encode(retrieveLatestDollarPrice())
 		return
 	}
 	price := response.Data
-	saveDolarPrice(&price)
+	saveDollarPrice(&price)
 	Response := Response{Bid: price.Bid}
 	json.NewEncoder(w).Encode(Response)
 
 }
 
-func retrieveLatestDolarPrice() *Response {
-	price := DolarPrice{}
+func retrieveLatestDollarPrice() *Response {
+	price := DollarPrice{}
 	Response := Response{}
 	database.DB.Order("created_at desc").First(&price)
 	Response.Bid = price.Bid
 	return &Response
 }
 
-func saveDolarPrice(price *DolarPrice) {
-	ctxApi := context.Background()
-	ctxApi, cancel := context.WithTimeout(ctxApi, time.Millisecond*200)
+func saveDollarPrice(price *DollarPrice) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*200)
 	defer cancel()
-	database.DB.WithContext(ctxApi).Create(&price)
+	error := database.DB.WithContext(ctx).Create(&price).Error
+	if error != nil {
+		if ctx.Err() != nil {
+			println("Timeout error at saving dollar price")
+		}
+		println("Error saving dollar price")
+	}
 }
 
 func migrate() {
 	database.Load()
-	database.DB.AutoMigrate(&DolarPrice{})
+	database.DB.AutoMigrate(&DollarPrice{})
 }
