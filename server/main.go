@@ -74,7 +74,7 @@ func retrieveLatestDollarPrice() *Response {
 
 func saveDollarPrice(price *DollarPrice) {
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*200)
+	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*10)
 	defer cancel()
 	error := database.DB.WithContext(ctx).Create(&price).Error
 	if error != nil {
